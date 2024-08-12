@@ -1,0 +1,36 @@
+GET http://localhost:3001/posts
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiZWxpcGx1dGNob2sxQGdtYWlsLmNvbSIsInBhc3N3b3JkIjoiJDJiJDEwJDRMV1JuSnlBdGFZWmVLeHFhdHNXb3VtZmZJRE1keEgvNHIvRXkuTEN6ampPalBYZDhJNXFlIiwiaWF0IjoxNzIzMDAxOTM1LCJleHAiOjE3MjMwMDI1MzV9.adgjW6VX580IDr_P05kcK68nthxJztkT1TMXrLFA5TI
+###
+POST http://localhost:4000/token
+Content-Type: application/json
+
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UiLCJwYXNzd29yZCI6IiQyYiQxMCRHb1ZUVnVsWnFTbFM4VG9meGQ5eWoubTdIZ3F2U3dNcW5YeDNBQldYdXdqVDZDcEMuRWNYQyIsImlhdCI6MTcyMjk2OTk3OX0.fZsn9KuKQmIrsaNp8yz80mHACwQ4hKVeHxUHvMc_-yU"
+}
+
+###
+DELETE http://localhost:4000/logout
+Content-Type: application/json
+
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiSm9obiBEb2UiLCJwYXNzd29yZCI6IiQyYiQxMCRHb1ZUVnVsWnFTbFM4VG9meGQ5eWoubTdIZ3F2U3dNcW5YeDNBQldYdXdqVDZDcEMuRWNYQyIsImlhdCI6MTcyMjk2OTk3OX0.fZsn9KuKQmIrsaNp8yz80mHACwQ4hKVeHxUHvMc_-yU"
+}
+
+###
+POST  http://localhost:4000/users/signup
+Content-Type: application/json
+
+{
+    "name": "eliplutchok1@gmail.com",
+    "password": "123"
+}
+
+###
+
+POST  http://localhost:4000/users/login
+Content-Type: application/json
+
+{
+    "name": "eliplutchok1@gmail.com",
+    "password": "123"
+}
