@@ -102,6 +102,7 @@ app.delete('/logout', async (req, res) => {
 
 // Login Route
 app.post('/users/login', async (req, res) => {
+    console.log('Login request:', req.body);
     const { username, password } = req.body;
 
     try {
@@ -348,31 +349,31 @@ app.get('/allEdits', authenticateToken, ensureAdmin, async (req, res) => {
 
 app.get('/allRatings', authenticateToken, ensureAdmin, async (req, res) => {
     logger.info('Query:', req.query);
-    const { username, translation_status, rating_status, currentPage = 1, limit = 20 } = req.query;
+    const { username, translation_status, rating_status, currentPage = 1, limit = 20, fetchAll = false } = req.query;
     const offset = (currentPage - 1) * limit;
     const client = await pool.connect();
 
     try {
         let query = `
-            SELECT ratings.rating_id, ratings.rating, ratings.feedback, ratings.creation_date, ratings.status,
-                   translations.text, translations.status AS translation_status,
-                   passages.hebrew_text, passages.passage_id, pages.page_number, books.name AS book_name, users.username
-            FROM ratings
-            JOIN translations ON ratings.translation_id = translations.translation_id
-            JOIN passages ON translations.passage_id = passages.passage_id
-            JOIN pages ON passages.page_id = pages.page_id
-            JOIN books ON pages.book_id = books.book_id
-            JOIN users ON ratings.user_id = users.user_id
-        `;
-        let countQuery = `
-            SELECT COUNT(*) AS total
-            FROM ratings
-            JOIN translations ON ratings.translation_id = translations.translation_id
-            JOIN passages ON translations.passage_id = passages.passage_id
-            JOIN pages ON passages.page_id = pages.page_id
-            JOIN books ON pages.book_id = books.book_id
-            JOIN users ON ratings.user_id = users.user_id
-        `;
+        SELECT ratings.rating_id, ratings.rating, ratings.feedback, ratings.creation_date, ratings.status,
+               translations.text, translations.status AS translation_status,
+               passages.hebrew_text, passages.passage_id, pages.page_number, books.name AS book_name, users.username
+        FROM ratings
+        JOIN translations ON ratings.translation_id = translations.translation_id
+        JOIN passages ON translations.passage_id = passages.passage_id
+        JOIN pages ON passages.page_id = pages.page_id
+        JOIN books ON pages.book_id = books.book_id
+        JOIN users ON ratings.user_id = users.user_id
+    `;
+    let countQuery = `
+        SELECT COUNT(*) AS total
+        FROM ratings
+        JOIN translations ON ratings.translation_id = translations.translation_id
+        JOIN passages ON translations.passage_id = passages.passage_id
+        JOIN pages ON passages.page_id = pages.page_id
+        JOIN books ON pages.book_id = books.book_id
+        JOIN users ON ratings.user_id = users.user_id
+    `;
         let queryParams = [];
         let countParams = [];
         let whereClauses = [];
@@ -402,8 +403,10 @@ app.get('/allRatings', authenticateToken, ensureAdmin, async (req, res) => {
             countQuery += whereClause;
         }
 
-        query += ` LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
-        queryParams.push(limit, offset);
+        if (!fetchAll) {
+            query += ` LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
+            queryParams.push(limit, offset);
+        }
 
         const result = await client.query(query, queryParams);
 
@@ -517,5 +520,6 @@ app.post('/edits/reject', authenticateToken, ensureAdmin, async (req, res) => {
 });
 
 app.listen(3001, () => {
+    console.log('Server is running on port 3001');
     logger.info('Server is running on port 3001');
 });

@@ -1,4 +1,4 @@
-const pool = require('../db/db'); 
+const pool = require('./db'); 
 const bcrypt = require('bcrypt');
 const readlineSync = require('readline-sync');
 require('dotenv').config();
@@ -11,8 +11,10 @@ const addUser = async () => {
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
+    console.log('Hashed password:', hashedPassword);
 
     const client = await pool.connect();
+    console.log('connected to client:', client);
     try {
       await client.query('BEGIN');
 
@@ -21,6 +23,7 @@ const addUser = async () => {
         VALUES ($1, $2, $3, $4, 'standard')
       `;
       await client.query(insertQuery, [username, email, hashedPassword, name]);
+      console.log('inserted into users table');
 
       await client.query('COMMIT');
       console.log('standard user added successfully');
