@@ -5,6 +5,8 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const pool = require('./db');
 const winston = require('winston');
+const { Server } = require('socket.io');
+const http = require('http');
 
 const bcrypt = require('bcrypt');
 
@@ -39,6 +41,14 @@ function generateAccessToken(user) {
     );
 }
 
+function generateRefreshToken(user) {
+    return jwt.sign(
+        user, 
+        process.env.REFRESH_TOKEN_SECRET, 
+        { expiresIn: '7d' }
+    );
+}
+
 // Store Refresh Token
 async function storeRefreshToken(token, username, expiresAt) {
     await pool.query('INSERT INTO refresh_tokens (token, username, expires_at) VALUES ($1, $2, $3)', [token, username, expiresAt]);
@@ -47,6 +57,7 @@ async function storeRefreshToken(token, username, expiresAt) {
 // Verify Refresh Token
 async function verifyRefreshToken(token) {
     const result = await pool.query('SELECT * FROM refresh_tokens WHERE token = $1', [token]);
+    console.log('Refresh token result:', result.rows[0]);
     return result.rows[0];
 }
 
@@ -67,8 +78,10 @@ app.post('/token', async (req, res) => {
         if (err) return res.sendStatus(403);
 
         try {
+            console.log('attempting to refresh token. user:', user);
             const dbUser = await pool.query('SELECT * FROM users WHERE username = $1', [user.username]);
             const accessToken = generateAccessToken(dbUser.rows[0]);
+            console.log('Generated new access token:', accessToken);
             res.json({ accessToken: accessToken });
         } catch (error) {
             res.sendStatus(500).send('Internal Server Error');
@@ -115,11 +128,13 @@ app.post('/users/login', async (req, res) => {
 
         if (await bcrypt.compare(password, user.hashed_password)) {
             const accessToken = generateAccessToken(user);
-            const refreshToken = jwt.sign({ username: user.username, privilege_level: user.privilege_level }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
+            const refreshToken = generateRefreshToken(user);
 
             const expiresAt = new Date();
             expiresAt.setDate(expiresAt.getDate() + 7);
+            console.log('Expires at:', expiresAt);
             await storeRefreshToken(refreshToken, user.username, expiresAt);
+            console.log('Stored refresh token');
 
             res.json({ accessToken: accessToken, refreshToken: refreshToken, privilege_level: user.privilege_level });
         } else {
@@ -519,7 +534,28 @@ app.post('/edits/reject', authenticateToken, ensureAdmin, async (req, res) => {
     }
 });
 
-app.listen(3001, () => {
-    console.log('Server is running on port 3001');
-    logger.info('Server is running on port 3001');
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: process.env.REACT_APP_URL,
+        methods: ["GET", "POST"]
+    }
+});
+
+io.on('connection', (socket) => {
+    console.log('Client connected');
+    socket.on('message', (message) => {
+        console.log(`Received message => ${message}`);
+        socket.send('Hello from server');
+    });
+    socket.on('disconnect', () => {
+        console.log('Client disconnected');
+    });
+});
+
+const PORT = process.env.PORT || 3001;
+
+server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    logger.info(`Server is running on port ${PORT}`);
 });
