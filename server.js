@@ -10,7 +10,16 @@ const bcrypt = require('bcrypt');
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+
+const corsOptions = {
+    origin: process.env.REACT_APP_AUTH_URL,
+    optionsSuccessStatus: 200, // For legacy browser support
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    credentials: true, // Allow credentials (cookies, authorization headers, TLS client certificates)
+  };
+  
+  app.use(cors(corsOptions));
+// app.use(cors());
 
 const logger = winston.createLogger({
     level: 'info',
