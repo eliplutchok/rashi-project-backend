@@ -12,7 +12,7 @@ const app = express();
 app.use(express.json());
 
 const corsOptions = {
-    origin: process.env.REACT_APP_AUTH_URL,
+    origin: process.env.REACT_APP_URL,
     optionsSuccessStatus: 200, // For legacy browser support
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true, // Allow credentials (cookies, authorization headers, TLS client certificates)
