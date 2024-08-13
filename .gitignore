@@ -121,3 +121,7 @@ public/
 
 # Heroku
 .heroku/
+
+.rest
+
+request.rest

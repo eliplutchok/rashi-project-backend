@@ -1,5 +1,5 @@
 require('dotenv').config();
-const pool = require('./db');
+const pool = require('../config/database'); 
 
 const SECTION_NAME = 'Talmud';
 const BOOK_NAME = 'Rashi_on_Megillah'; 

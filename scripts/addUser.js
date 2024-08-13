@@ -1,4 +1,4 @@
-const pool = require('./db'); 
+const pool = require('../config/database'); 
 const bcrypt = require('bcrypt');
 const readlineSync = require('readline-sync');
 require('dotenv').config();

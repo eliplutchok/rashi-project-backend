@@ -1,5 +1,5 @@
 require('dotenv').config();
-const pool = require('./db');
+const pool = require('../config/database'); 
 
 const fs = require('fs');
 const csv = require('csv-parser');
