@@ -50,7 +50,7 @@ async function updateTranslationsFromCSV(csvFilePath) {
   }
 }
 
-const csvFilePath = './rashi_megillah.csv';
+const csvFilePath = './rashi_berakhot.csv';
 
 // Call the function to update translations
 updateTranslationsFromCSV(csvFilePath);

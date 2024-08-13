@@ -57,7 +57,6 @@ async function storeRefreshToken(token, username, expiresAt) {
 // Verify Refresh Token
 async function verifyRefreshToken(token) {
     const result = await pool.query('SELECT * FROM refresh_tokens WHERE token = $1', [token]);
-    console.log('Refresh token result:', result.rows[0]);
     return result.rows[0];
 }
 
@@ -78,10 +77,8 @@ app.post('/token', async (req, res) => {
         if (err) return res.sendStatus(403);
 
         try {
-            console.log('attempting to refresh token. user:', user);
             const dbUser = await pool.query('SELECT * FROM users WHERE username = $1', [user.username]);
             const accessToken = generateAccessToken(dbUser.rows[0]);
-            console.log('Generated new access token:', accessToken);
             res.json({ accessToken: accessToken });
         } catch (error) {
             res.sendStatus(500).send('Internal Server Error');
@@ -113,37 +110,37 @@ app.delete('/logout', async (req, res) => {
 //     }
 // });
 
-// Login Route
+// Backend route
 app.post('/users/login', async (req, res) => {
-    console.log('Login request:', req.body);
+    // console.log('Login request:', req.body);
     const { username, password } = req.body;
-
+  
     try {
-        const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-        const user = userResult.rows[0];
-
-        if (!user) {
-            return res.status(400).send('Cannot find user');
-        }
-
-        if (await bcrypt.compare(password, user.hashed_password)) {
-            const accessToken = generateAccessToken(user);
-            const refreshToken = generateRefreshToken(user);
-
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 7);
-            console.log('Expires at:', expiresAt);
-            await storeRefreshToken(refreshToken, user.username, expiresAt);
-            console.log('Stored refresh token');
-
-            res.json({ accessToken: accessToken, refreshToken: refreshToken, privilege_level: user.privilege_level });
-        } else {
-            res.status(403).send('Not Allowed');
-        }
+      const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+      const user = userResult.rows[0];
+  
+      if (!user) {
+        return res.status(403).json({ message: 'Incorrect username or password' });
+      }
+  
+      if (await bcrypt.compare(password, user.hashed_password)) {
+        const accessToken = generateAccessToken(user);
+        const refreshToken = generateRefreshToken(user);
+  
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+        console.log('Expires at:', expiresAt);
+        await storeRefreshToken(refreshToken, user.username, expiresAt);
+        console.log('Stored refresh token');
+  
+        res.json({ accessToken: accessToken, refreshToken: refreshToken, privilege_level: user.privilege_level });
+      } else {
+        res.status(403).json({ message: 'Incorrect username or password' });
+      }
     } catch (error) {
-        res.status(500).send('Internal Server Error');
+      res.status(500).json({ message: 'Internal Server Error' });
     }
-});
+  });
 
 // Middleware to authenticate the token
 function authenticateToken(req, res, next) {
@@ -187,7 +184,7 @@ const getPassagesFromDB = async (book, page) => {
     const client = await pool.connect();
     try {
         const result = await client.query(`
-            SELECT passages.passage_id, passages.hebrew_text, passages.passage_number, translations.text AS english_text, translations.translation_id
+            SELECT passages.passage_id, passages.hebrew_text, passages.passage_number, translations.text AS english_text, translations.translation_id, books.length
             FROM passages
             JOIN pages ON passages.page_id = pages.page_id
             JOIN books ON pages.book_id = books.book_id
@@ -200,7 +197,8 @@ const getPassagesFromDB = async (book, page) => {
             hebrew_text: row.hebrew_text,
             english_text: row.english_text,
             passage_number: row.passage_number,
-            translation_id: row.translation_id
+            translation_id: row.translation_id,
+            length: row.length
         }));
     } catch (error) {
         logger.error('Error fetching passages from database:', error);
@@ -209,6 +207,22 @@ const getPassagesFromDB = async (book, page) => {
         client.release();
     }
 };
+
+app.get('/bookInfo', authenticateToken, async (req, res) => {
+    const book = req.query.book;
+    const client = await pool.connect();
+    try {
+        const result = await client.query(`
+            SELECT * FROM books WHERE name = $1
+        `, [book]);
+        res.json(result.rows[0]);
+    } catch (error) {
+        logger.error('Error fetching book info:', error);
+        res.status(500).json({ error: 'Error fetching book info' });
+    } finally {
+        client.release();
+    }
+});
 
 app.get('/page', authenticateToken, async (req, res) => {
     const book = req.query.book;
@@ -223,7 +237,7 @@ app.get('/page', authenticateToken, async (req, res) => {
 });
 
 app.post('/edits', authenticateToken, async (req, res) => {
-    const { passage_id, edited_text } = req.body;
+    const { passage_id, edited_text, notes } = req.body;
     const user_id = req.user.user_id;
     logger.info('User ID:', user_id);
 
@@ -232,10 +246,10 @@ app.post('/edits', authenticateToken, async (req, res) => {
         await client.query('BEGIN');
 
         const insertQuery = `
-            INSERT INTO translations (text, version_name, status, user_id, passage_id)
-            VALUES ($1, $2, $3, $4, $5) RETURNING translation_id
+            INSERT INTO translations (text, version_name, status, user_id, passage_id, notes)
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING translation_id
         `;
-        const result = await client.query(insertQuery, [edited_text, 'user', 'proposed', user_id, passage_id]);
+        const result = await client.query(insertQuery, [edited_text, 'user', 'proposed', user_id, passage_id, notes]);
         const translationId = result.rows[0].translation_id;
 
         await client.query('COMMIT');
