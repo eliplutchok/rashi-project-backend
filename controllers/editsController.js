@@ -145,3 +145,23 @@ exports.dismissRatings = async (req, res) => {
         client.release();
     }
 };
+
+exports.submitComparison = async (req, res) => {
+    const { translation_one_id, translation_two_id, rating, version_name, status, notes } = req.body;
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const result = await client.query(`
+            INSERT INTO comparisons (translation_one_id, translation_two_id, rating, version_name, status, notes)
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING comparison_id
+        `, [translation_one_id, translation_two_id, rating, version_name, status, notes]);
+        await client.query('COMMIT');
+        res.status(201).json({ id: result.rows[0].comparison_id, message: 'Comparison submitted successfully' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        logger.error('Error submitting comparison:', error);
+        res.status(500).json({ error: 'Error submitting comparison' });
+    } finally {
+        client.release();
+    }
+};

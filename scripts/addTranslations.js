@@ -32,8 +32,23 @@ async function updateTranslationsFromCSV(csvFilePath) {
     
     for (const update of updates) {
       const { translation_id, text } = update;
-      await client.query('UPDATE translations SET text = $1, version_name = $2 WHERE translation_id = $3', [text, 'claude-opus-naive', translation_id]);
-      console.log(`Updated translation_id ${translation_id}`);
+
+      // Fetch the existing translation to get the passage_id
+      const res = await client.query('SELECT passage_id FROM translations WHERE translation_id = $1', [translation_id]);
+      if (res.rows.length === 0) {
+        console.error(`No translation found with translation_id ${translation_id}`);
+        continue;
+      }
+
+      const passage_id = res.rows[0].passage_id;
+
+      // Insert a new translation with the new text, version, status, and same passage_id
+      await client.query(
+        'INSERT INTO translations (text, version_name, status, user_id, passage_id) VALUES ($1, $2, $3, $4, $5)',
+        [text, 'claude-opus-naive', 'proposed', 1, passage_id]
+      );
+
+      console.log(`Inserted new translation for passage_id ${passage_id}`);
     }
 
     // Commit transaction
@@ -52,4 +67,4 @@ async function updateTranslationsFromCSV(csvFilePath) {
 const csvFilePath = './claude_opus_naive_translations_rashi_megillah.csv';
 
 // Call the function to update translations
-updateTranslationsFromCSV(csvFilePath);
+updateTranslationsFromCSV(csvFilePath).catch((e) => console.error(e.stack));
