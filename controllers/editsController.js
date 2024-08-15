@@ -165,3 +165,41 @@ exports.submitComparison = async (req, res) => {
         client.release();
     }
 };
+
+exports.approveComparisons = async (req, res) => {
+    const { comparison_ids } = req.body;
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        for (let comparison_id of comparison_ids) {
+            await client.query(`UPDATE comparisons SET status = 'approved' WHERE comparison_id = $1`, [comparison_id]);
+        }
+        await client.query('COMMIT');
+        res.json({ message: 'Comparisons approved successfully' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        logger.error('Error approving comparisons:', error);
+        res.status(500).json({ error: 'Error approving comparisons' });
+    } finally {
+        client.release();
+    }
+};
+
+exports.rejectComparisons = async (req, res) => {
+    const { comparison_ids } = req.body;
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        for (let comparison_id of comparison_ids) {
+            await client.query(`UPDATE comparisons SET status = 'rejected' WHERE comparison_id = $1`, [comparison_id]);
+        }
+        await client.query('COMMIT');
+        res.json({ message: 'Comparisons rejected successfully' });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        logger.error('Error rejecting comparisons:', error);
+        res.status(500).json({ error: 'Error rejecting comparisons' });
+    } finally {
+        client.release();
+    }
+};
