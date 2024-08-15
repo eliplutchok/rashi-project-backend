@@ -28,7 +28,7 @@ exports.login = async (req, res) => {
         expiresAt.setDate(expiresAt.getDate() + 7);
         await pool.query('INSERT INTO refresh_tokens (token, username, expires_at) VALUES ($1, $2, $3)', [refreshToken, user.username, expiresAt]);
 
-        res.json({ accessToken, refreshToken, privilege_level: user.privilege_level });
+        res.json({ accessToken, refreshToken, privilege_level: user.privilege_level, user_id: user.user_id });
     } catch (error) {
         logger.error('Error during login:', error);
         res.status(500).json({ message: 'Internal Server Error' });

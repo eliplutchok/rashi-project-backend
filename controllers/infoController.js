@@ -7,7 +7,7 @@ const getPassagesFromDB = async (book, page) => {
     const client = await pool.connect();
     try {
         const result = await client.query(`
-            SELECT passages.passage_id, passages.hebrew_text, passages.passage_number, translations.text AS english_text, translations.translation_id, books.length
+            SELECT passages.passage_id, passages.hebrew_text, passages.passage_number, translations.text AS english_text, translations.translation_id, books.length, passages.page_id
             FROM passages
             JOIN pages ON passages.page_id = pages.page_id
             JOIN books ON pages.book_id = books.book_id
@@ -17,6 +17,7 @@ const getPassagesFromDB = async (book, page) => {
 
         return result.rows.map(row => ({
             id: row.passage_id,
+            page_id: row.page_id,
             hebrew_text: row.hebrew_text,
             english_text: row.english_text,
             passage_number: row.passage_number,
