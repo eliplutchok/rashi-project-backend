@@ -1,51 +1,42 @@
 require('dotenv').config({ path: '../.env' });
-const pool = require('../config/database'); 
+const pool = require('../config/database');
 const fs = require('fs');
-const csv = require('csv-parser');
 
-// Function to read CSV file and return data
-function readCSV(csvFilePath) {
+// Function to read JSON file and return data
+function readJSON(jsonFilePath) {
   return new Promise((resolve, reject) => {
-    const updates = [];
-    fs.createReadStream(csvFilePath)
-      .pipe(csv())
-      .on('data', (row) => {
-        const { translation_id, text } = row;
-        updates.push({ translation_id, text });
-      })
-      .on('end', () => {
-        resolve(updates);
-      })
-      .on('error', reject);
+    fs.readFile(jsonFilePath, 'utf8', (err, data) => {
+      if (err) {
+        reject(err);
+      } else {
+        try {
+          const updates = JSON.parse(data);
+          resolve(updates);
+        } catch (parseError) {
+          reject(parseError);
+        }
+      }
+    });
   });
 }
 
 // Function to update translations
-async function updateTranslationsFromCSV(csvFilePath) {
+async function updateTranslationsFromJSON(jsonFilePath, version_name, status, user_id) {
   const client = await pool.connect();
   try {
-    const updates = await readCSV(csvFilePath);
-    console.log('CSV file successfully processed');
+    const updates = await readJSON(jsonFilePath);
+    console.log('JSON file successfully processed');
     
     // Begin transaction
     await client.query('BEGIN');
     
     for (const update of updates) {
-      const { translation_id, text } = update;
+      const { passage_id, translation } = update;
 
-      // Fetch the existing translation to get the passage_id
-      const res = await client.query('SELECT passage_id FROM translations WHERE translation_id = $1', [translation_id]);
-      if (res.rows.length === 0) {
-        console.error(`No translation found with translation_id ${translation_id}`);
-        continue;
-      }
-
-      const passage_id = res.rows[0].passage_id;
-
-      // Insert a new translation with the new text, version, status, and same passage_id
+      // Insert a new translation with the given text, version, status, user_id, and passage_id
       await client.query(
         'INSERT INTO translations (text, version_name, status, user_id, passage_id) VALUES ($1, $2, $3, $4, $5)',
-        [text, 'claude-opus-naive', 'proposed', 1, passage_id]
+        [translation, version_name, status, user_id, passage_id]
       );
 
       console.log(`Inserted new translation for passage_id ${passage_id}`);
@@ -64,7 +55,10 @@ async function updateTranslationsFromCSV(csvFilePath) {
   }
 }
 
-const csvFilePath = './claude_opus_naive_translations_rashi_megillah.csv';
+const jsonFilePath = './translated_megillah_updated_rashis_and_context.json';
+const version_name = 'mistral-v1';
+const status = 'proposed';
+const user_id = 1;
 
 // Call the function to update translations
-updateTranslationsFromCSV(csvFilePath).catch((e) => console.error(e.stack));
+updateTranslationsFromJSON(jsonFilePath, version_name, status, user_id).catch((e) => console.error(e.stack));

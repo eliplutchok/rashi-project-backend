@@ -2,18 +2,18 @@ require('dotenv').config();
 const pool = require('../config/database');
 
 const SECTION_NAME = 'Talmud';
-const BASE_BOOKS = [
-     'Yoma', 'Sukkah', 'Beitzah', 'Rosh_Hashanah',
-    'Taanit', 'Moed_Kattan', 'Hagigah', 'Gittin', 'Ketubot', 'Kiddushin',
-    'Nazir', 'Nedarim', 'Sotah', 'Yevamot', 'Avodah_Zarah', 'Bava_Batra',
-    'Bava_Kamma', 'Bava_Metzia', 'Horayot', 'Makkot', 'Sanhedrin', 'Shevuot',
-    'Arakhin', 'Bekhorot', 'Chullin', 'Keritot', 'Meilah', 'Menachot',
-    'Temurah', 'Zevachim', 'Niddah'
-];
+// const BASE_BOOKS = [
+//      'Yoma', 'Sukkah', 'Beitzah', 'Rosh_Hashanah',
+//     'Taanit', 'Moed_Kattan', 'Hagigah', 'Gittin', 'Ketubot', 'Kiddushin',
+//     'Nazir', 'Nedarim', 'Sotah', 'Yevamot', 'Avodah_Zarah', 'Bava_Batra',
+//     'Bava_Kamma', 'Bava_Metzia', 'Horayot', 'Makkot', 'Sanhedrin', 'Shevuot',
+//     'Arakhin', 'Bekhorot', 'Chullin', 'Keritot', 'Meilah', 'Menachot',
+//     'Temurah', 'Zevachim', 'Niddah'
+// ];
 
-// 'Eiruvin', 'Pesachim',
+BASE_BOOKS =['Eiruvin', 'Pesachim', 'Megillah']
 const BOOKS = [
-    ...BASE_BOOKS,
+    // ...BASE_BOOKS,
     ...BASE_BOOKS.map(book => `Rashi_on_${book}`)
 ];
 const USER_ID = 1;

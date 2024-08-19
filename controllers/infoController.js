@@ -2,18 +2,31 @@ const pool = require('../config/database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const logger = require('../config/logger');
+const { stat } = require('fs');
 
-const getPassagesFromDB = async (book, page) => {
+const getPassagesFromDB = async (book, page, version='all') => {
     const client = await pool.connect();
     try {
-        const result = await client.query(`
-            SELECT passages.passage_id, passages.hebrew_text, passages.passage_number, translations.text AS english_text, translations.translation_id, books.length, passages.page_id
-            FROM passages
-            JOIN pages ON passages.page_id = pages.page_id
-            JOIN books ON pages.book_id = books.book_id
-            LEFT JOIN translations ON passages.passage_id = translations.passage_id AND translations.status = 'published'
-            WHERE books.name = $1 AND pages.page_number = $2
-        `, [book, page]);
+        let result;
+        if (version === 'published') {
+            result = await client.query(`
+                SELECT passages.passage_id, passages.hebrew_text, passages.passage_number, translations.text AS english_text, translations.translation_id, books.length, passages.page_id
+                FROM passages
+                JOIN pages ON passages.page_id = pages.page_id
+                JOIN books ON pages.book_id = books.book_id
+                LEFT JOIN translations ON passages.passage_id = translations.passage_id
+                WHERE books.name = $1 AND pages.page_number = $2 AND translations.status = 'published'
+            `, [book, page]);
+        } else {    
+            result = await client.query(`
+                SELECT passages.passage_id, passages.hebrew_text, passages.passage_number, translations.text AS english_text, translations.translation_id, books.length, passages.page_id
+                FROM passages
+                JOIN pages ON passages.page_id = pages.page_id
+                JOIN books ON pages.book_id = books.book_id
+                LEFT JOIN translations ON passages.passage_id = translations.passage_id AND translations.version_name = $3
+                WHERE books.name = $1 AND pages.page_number = $2
+            `, [book, page, version]);
+        }
 
         return result.rows.map(row => ({
             id: row.passage_id,
@@ -51,8 +64,11 @@ exports.getBookInfo = async (req, res) => {
 exports.getPage = async (req, res) => {
     const book = req.query.book;
     const page = req.query.page;
+    const version = req.query.translation_version || 'all';
+    console.log('book', book, 'translation_version: ', version);
+    console.log(req.query);
     try {
-        const textObject = await getPassagesFromDB(book, page);
+        const textObject = await getPassagesFromDB(book, page, version);
         logger.info(`Fetched page: ${textObject.length}`);
         res.json(textObject);
     } catch (error) {
@@ -81,7 +97,8 @@ const getPassageForComparison = async (book, page) => {
                     hebrew_text: row.hebrew_text,
                     passage_number: row.passage_number,
                     translations: [],
-                    length: row.length
+                    length: row.length, 
+                    status: row.status
                 };
             }
             if (row.translation_id) {
@@ -112,5 +129,43 @@ exports.getComparisonPage = async (req, res) => {
         res.json(textObject);
     } catch (error) {
         res.status(500).json({ error: 'Error fetching page' });
+    }
+};
+
+const getTranslationVersionsForBookAndPage = async (book, page) => {
+    const client = await pool.connect();
+    try {
+        const result = await client.query(`
+            SELECT DISTINCT translations.version_name
+            FROM translations
+            JOIN passages ON translations.passage_id = passages.passage_id
+            JOIN pages ON passages.page_id = pages.page_id
+            JOIN books ON pages.book_id = books.book_id
+            WHERE books.name = $1 AND pages.page_number = $2
+        `, [book, page]);
+
+        return result.rows.map(row => row.version_name);
+    } catch (error) {
+        logger.error('Error fetching translation versions for book and page from database:', error);
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+exports.getTranslationVersions = async (req, res) => {
+    const book = req.query.book;
+    const page = req.query.page;
+
+    if (!book || !page) {
+        return res.status(400).json({ error: 'Book name and page number are required' });
+    }
+
+    try {
+        const versions = await getTranslationVersionsForBookAndPage(book, page);
+        logger.info(`Fetched ${versions.length} translation versions for book: ${book} and page: ${page}`);
+        res.json(versions);
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching translation versions' });
     }
 };
