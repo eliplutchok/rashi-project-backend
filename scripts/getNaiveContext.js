@@ -31,21 +31,37 @@ const getPageNumberValue = (pageNumber) => {
 const getTalmudContext = async (talmudBookName, currentPageNumber, versionName, client) => {
   let talmudContext = [];
   const currentPageValue = getPageNumberValue(currentPageNumber);
-  const minPageValue = currentPageValue - 1; // 6 pages before the current page
+  const minPageValue = currentPageValue - 1;
 
-  const query = `
-    SELECT p.hebrew_text, t.text as translation, pg.page_number
+  let query = `
+    SELECT p.hebrew_text, pg.page_number`;
+
+  if (versionName) {
+    query += `, t.text as translation`;
+  }
+
+  query += `
     FROM passages p
-    JOIN translations t ON p.passage_id = t.passage_id
-    JOIN pages pg ON p.page_id = pg.page_id
+    JOIN pages pg ON p.page_id = pg.page_id`;
+
+  if (versionName) {
+    query += ` JOIN translations t ON p.passage_id = t.passage_id`;
+  }
+
+  query += `
     WHERE p.book_id = (SELECT book_id FROM books WHERE name = $1)
     AND (
       CAST(regexp_replace(pg.page_number, '[^0-9]', '', 'g') AS INTEGER) * 2 + 
       CASE WHEN pg.page_number ~ 'b$' THEN 1 ELSE 0 END >= $2
     )
     AND CAST(regexp_replace(pg.page_number, '[^0-9]', '', 'g') AS INTEGER) * 2 + 
-      CASE WHEN pg.page_number ~ 'b$' THEN 1 ELSE 0 END <= $4
-    AND t.version_name = $3
+      CASE WHEN pg.page_number ~ 'b$' THEN 1 ELSE 0 END <= $3`;
+
+  if (versionName) {
+    query += ` AND t.version_name = $4`;
+  }
+
+  query += `
     ORDER BY
       CAST(regexp_replace(pg.page_number, '[^0-9]', '', 'g') AS INTEGER) DESC,
       CASE
@@ -55,22 +71,30 @@ const getTalmudContext = async (talmudBookName, currentPageNumber, versionName, 
       END DESC,
       p.passage_number DESC;
   `;
-  
-  const result = await client.query(query, [talmudBookName, minPageValue, versionName, currentPageValue]);
+
+  const params = [talmudBookName, minPageValue, currentPageValue];
+  if (versionName) {
+    params.push(versionName);
+  }
+
+  const result = await client.query(query, params);
 
   console.log("query:", query);
   console.log("talmudBookName:", talmudBookName);
-    console.log("minPageValue:", minPageValue);
-    console.log("versionName:", versionName);
-    console.log("currentPageValue:", currentPageValue);
+  console.log("minPageValue:", minPageValue);
+  console.log("versionName:", versionName);
+  console.log("currentPageValue:", currentPageValue);
   console.log('Talmud Context Results:', result.rows); // Debugging log
-  
+
   for (const row of result.rows) {
-    const combinedText = stripHTML(row.hebrew_text) + "\n" + stripHTML(row.translation);
+    let combinedText = stripHTML(row.hebrew_text);
+    if (versionName) {
+      combinedText += "\n" + stripHTML(row.translation);
+    }
     talmudContext.push(combinedText);
   }
 
-  talmudContext.reverse();  // Reverse the context as we collected it in descending order
+  talmudContext.reverse(); // Reverse the context as we collected it in descending order
 
   return talmudContext.join("\n");
 };
@@ -78,7 +102,7 @@ const getTalmudContext = async (talmudBookName, currentPageNumber, versionName, 
 const getRashiContext = async (rashiBookName, currentPageNumber, client) => {
   let rashiContext = "";
   const currentPageValue = getPageNumberValue(currentPageNumber);
-  const minPageValue = currentPageValue - 1; 
+  const minPageValue = currentPageValue - 1;
   console.log('minPageValue:', minPageValue);
 
   const query = `
@@ -101,10 +125,8 @@ const getRashiContext = async (rashiBookName, currentPageNumber, client) => {
       END DESC,
       p.passage_number DESC;
   `;
-  
-  const result = await client.query(query, [rashiBookName, minPageValue, currentPageValue]);
 
-//   console.log('Rashi Context Results:', result.rows); // Debugging log
+  const result = await client.query(query, [rashiBookName, minPageValue, currentPageValue]);
 
   for (const row of result.rows) {
     rashiContext = stripHTML(row.hebrew_text) + "\n" + rashiContext;
@@ -119,47 +141,43 @@ const getRashiPassage = async (passageId, client) => {
     FROM passages 
     WHERE passage_id = $1;
   `;
-  
-  const result = await client.query(query, [passageId]);
 
-//   console.log('Rashi Passage:', result.rows[0]); // Debugging log
+  const result = await client.query(query, [passageId]);
 
   return stripHTML(result.rows[0].hebrew_text);
 };
 
 const prepareData = async (passageId, versionName) => {
   const client = await pool.connect();
-  
+
   try {
     // Step 1: Get the book name and page number using the passage ID
     const { book_name, page_number } = await getBookAndPageInfo(passageId, client);
-    
+
     // Correct book names for Talmud and Rashi
     const talmudBookName = book_name.replace('Rashi_on_', ''); // Strip the 'Rashi_on_' prefix for Talmud book name
     const rashiBookName = `Rashi_on_${talmudBookName}`;
     console.log('Talmud Book Name:', talmudBookName);
     console.log('Rashi Book Name:', rashiBookName);
-    
+
     // Step 2: Fetch Talmud context (current page and 6 preceding pages)
     const talmudContext = await getTalmudContext(talmudBookName, page_number, versionName, client);
-    
+
     // Step 3: Fetch Rashi context (same pages as Talmud)
     const rashiContext = await getRashiContext(rashiBookName, page_number, client);
-    
+
     // Step 4: Fetch the specific Rashi passage
     const rashiPassage = await getRashiPassage(passageId, client);
-    
+
     // Step 5: Create the JSON data
     const data = {
       talmud_context: talmudContext,
       rashi_context: rashiContext,
       rashi_passage_to_translate: rashiPassage,
     };
-    
+
     // Step 6: Write to a JSON file
     fs.writeFileSync(`passage_${passageId}_data.json`, JSON.stringify(data, null, 4), 'utf8');
-
-    // console.log('Prepared Data:', data);  // Final Debugging log
 
     return data;
   } catch (error) {
@@ -170,8 +188,9 @@ const prepareData = async (passageId, versionName) => {
   }
 };
 
+// Sefaria-William-Davidson
 // Example usage
-prepareData(7314, 'Sefaria-William-Davidson')
+prepareData(147358, 'Sefaria-William-Davidson')
   .then((data) => console.log('Data prepared successfully'))
   .catch((err) => console.error('Error preparing data:', err))
   .finally(() => pool.end());

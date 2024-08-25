@@ -31,12 +31,12 @@ async function updateTranslationsFromJSON(jsonFilePath, version_name, status, us
     await client.query('BEGIN');
     
     for (const update of updates) {
-      const { passage_id, translation } = update;
+      const { passage_id, text } = update;
 
       // Insert a new translation with the given text, version, status, user_id, and passage_id
       await client.query(
         'INSERT INTO translations (text, version_name, status, user_id, passage_id) VALUES ($1, $2, $3, $4, $5)',
-        [translation, version_name, status, user_id, passage_id]
+        [text, version_name, status, user_id, passage_id]
       );
 
       console.log(`Inserted new translation for passage_id ${passage_id}`);
@@ -55,8 +55,8 @@ async function updateTranslationsFromJSON(jsonFilePath, version_name, status, us
   }
 }
 
-const jsonFilePath = './translated_megillah_updated_rashis_and_context.json';
-const version_name = 'mistral-v1';
+const jsonFilePath = './gpt-4o-naive_translations_rashi_berakhot.json';
+const version_name = 'gpt-4o-naive';
 const status = 'proposed';
 const user_id = 1;
 

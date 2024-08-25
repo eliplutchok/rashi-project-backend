@@ -67,4 +67,4 @@ const insertTranslations = async (bookName, startPage, endPage) => {
   }
 };
 
-insertTranslations('Megillah', 2, 35).catch(e => console.error(e.stack));
+insertTranslations('Makkot', 2, 25).catch(e => console.error(e.stack));

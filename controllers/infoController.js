@@ -14,10 +14,10 @@ const getPassagesFromDB = async (book, page, version='all') => {
                 FROM passages
                 JOIN pages ON passages.page_id = pages.page_id
                 JOIN books ON pages.book_id = books.book_id
-                LEFT JOIN translations ON passages.passage_id = translations.passage_id
-                WHERE books.name = $1 AND pages.page_number = $2 AND translations.status = 'published'
+                LEFT JOIN translations ON passages.passage_id = translations.passage_id AND translations.status = 'published'
+                WHERE books.name = $1 AND pages.page_number = $2
             `, [book, page]);
-        } else {    
+        } else if (version !== 'all') {
             result = await client.query(`
                 SELECT passages.passage_id, passages.hebrew_text, passages.passage_number, translations.text AS english_text, translations.translation_id, books.length, passages.page_id
                 FROM passages
@@ -26,13 +26,22 @@ const getPassagesFromDB = async (book, page, version='all') => {
                 LEFT JOIN translations ON passages.passage_id = translations.passage_id AND translations.version_name = $3
                 WHERE books.name = $1 AND pages.page_number = $2
             `, [book, page, version]);
+        } else {
+            result = await client.query(`
+                SELECT passages.passage_id, passages.hebrew_text, passages.passage_number, translations.text AS english_text, translations.translation_id, books.length, passages.page_id
+                FROM passages
+                JOIN pages ON passages.page_id = pages.page_id
+                JOIN books ON pages.book_id = books.book_id
+                LEFT JOIN translations ON passages.passage_id = translations.passage_id
+                WHERE books.name = $1 AND pages.page_number = $2
+            `, [book, page]);
         }
 
         return result.rows.map(row => ({
             id: row.passage_id,
             page_id: row.page_id,
             hebrew_text: row.hebrew_text,
-            english_text: row.english_text,
+            english_text: row.english_text || '', // Default to empty string if no translation is found
             passage_number: row.passage_number,
             translation_id: row.translation_id,
             length: row.length
@@ -65,8 +74,6 @@ exports.getPage = async (req, res) => {
     const book = req.query.book;
     const page = req.query.page;
     const version = req.query.translation_version || 'all';
-    console.log('book', book, 'translation_version: ', version);
-    console.log(req.query);
     try {
         const textObject = await getPassagesFromDB(book, page, version);
         logger.info(`Fetched page: ${textObject.length}`);

@@ -10,7 +10,7 @@ exports.allEdits = async (req, res) => {
     try {
         let query = `
             SELECT translations.translation_id, translations.text, translations.notes, translations.creation_date, translations.status, translations.version_name,
-                   passages.hebrew_text, pages.page_number, passages.passage_id, books.name AS book_name, users.username
+                   passages.hebrew_text, pages.page_number, passages.passage_id, passages.passage_number, books.name AS book_name, users.username
             FROM translations
             JOIN passages ON translations.passage_id = passages.passage_id
             JOIN pages ON passages.page_id = pages.page_id
