@@ -4,6 +4,7 @@ const authenticateToken = require('../middlewares/authenticateToken');
 const editsController = require('../controllers/editsController');
 const infoController = require('../controllers/infoController');
 const progressController = require('../controllers/progressController');
+const passagesController = require('../controllers/passagesController');
 
 router.post('/edits', authenticateToken, editsController.submitEdit);
 router.post('/ratings', authenticateToken, editsController.submitRating);
@@ -16,5 +17,7 @@ router.get('/getTranslationVersions', authenticateToken, infoController.getTrans
 
 router.get('/getReadingProgress', authenticateToken, progressController.getReadingProgress);
 router.post('/updateReadingProgress', authenticateToken, progressController.updateReadingProgress);
+
+router.get('/getPassagesByIds', authenticateToken, passagesController.getPassagesByIds);
 
 module.exports = router;

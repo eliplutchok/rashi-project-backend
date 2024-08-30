@@ -77,6 +77,7 @@ exports.getPage = async (req, res) => {
     try {
         const textObject = await getPassagesFromDB(book, page, version);
         logger.info(`Fetched page: ${textObject.length}`);
+        // log ids of passages
         res.json(textObject);
     } catch (error) {
         res.status(500).json({ error: 'Error fetching page' });

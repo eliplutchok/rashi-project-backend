@@ -1,13 +1,27 @@
 const pool = require('../config/database');
 const axios = require('axios');
 
-const insertTranslations = async (bookName, startPage, endPage) => {
+const insertTranslations = async (bookName, startPage=null, endPage=null) => {
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
     const suffixes = ['a', 'b']; // Assuming pages have suffixes 'a' and 'b'
+
+    if (!startPage) {
+      startPage = 2;
+    }
+
+    if (!endPage) {
+      let length_response = await client.query(`
+        SELECT length FROM books WHERE name = $1;
+      `, [bookName]);
+
+      endPage = Math.ceil(length_response.rows[0].length / 2) + 1;
+    }
+
+    console.log(`Inserting translations for ${bookName} from page ${startPage} to ${endPage}`);
 
     for (let pageNumber = startPage; pageNumber <= endPage; pageNumber++) {
       for (let suffix of suffixes) {
@@ -67,4 +81,28 @@ const insertTranslations = async (bookName, startPage, endPage) => {
   }
 };
 
-insertTranslations('Makkot', 2, 25).catch(e => console.error(e.stack));
+// let books =  [
+//   'Eiruvin', 'Pesachim', 'Rosh Hashanah', 'Yoma', 'Beitzah', 
+//   'Taanit', 'Moed Katan', 'Chagigah', 'Yevamot', 'Ketubot', 'Nedarim', 
+//   'Nazir', 'Sotah', 'Gittin', 'Shevuot', 'Avodah Zarah', 'Horayot', 
+//   'Zevachim', 'Menachot', 'Chullin', 'Bekhorot', 'Arakhin', 'Temurah', 
+//   'Keritot', 'Meilah', 'Tamid', 'Niddah'
+// ];
+
+let books_2 = [
+  'Avodah_Zarah', 'Hagigah', 'Rosh_Hashanah', 'Avodah_Zarah'
+]
+
+const processBooks = async () => {
+  for (let book of books_2) {
+    try {
+      await insertTranslations(book); // Wait for this to complete before moving to the next book
+    } catch (e) {
+      console.error(`Error processing book ${book}:`, e.stack);
+    }
+  }
+};
+
+processBooks();
+
+// insertTranslations('Sukkah').catch(e => console.error(e.stack));

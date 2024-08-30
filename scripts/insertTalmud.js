@@ -3,12 +3,12 @@ const pool = require('../config/database');
 
 const SECTION_NAME = 'Talmud';
 // const BASE_BOOKS = [
-//      'Yoma', 'Sukkah', 'Beitzah', 'Rosh_Hashanah',
+//      'Berakhot', 'Shabbat', 'Yoma', 'Sukkah', 'Beitzah', 'Rosh_Hashanah',
 //     'Taanit', 'Moed_Kattan', 'Hagigah', 'Gittin', 'Ketubot', 'Kiddushin',
 //     'Nazir', 'Nedarim', 'Sotah', 'Yevamot', 'Avodah_Zarah', 'Bava_Batra',
 //     'Bava_Kamma', 'Bava_Metzia', 'Horayot', 'Makkot', 'Sanhedrin', 'Shevuot',
 //     'Arakhin', 'Bekhorot', 'Chullin', 'Keritot', 'Meilah', 'Menachot',
-//     'Temurah', 'Zevachim', 'Niddah'
+//     'Temurah', 'Zevachim', 'Niddah', 'Eiruvin', 'Pesachim', 'Megillah'
 // ];
 
 BASE_BOOKS =['Eiruvin', 'Pesachim', 'Megillah']
