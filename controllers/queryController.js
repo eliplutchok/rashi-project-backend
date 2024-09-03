@@ -6,6 +6,8 @@ const PYTHON_API_KEY = process.env.PYTHON_API_KEY;
 exports.queryTalmud = async (req, res) => {
     const query = req.query.query;
 
+    console.log("url and key", PYTHON_API_URL, PYTHON_API_KEY);
+
     if (!query) {
         return res.status(400).json({ error: 'Query is required' });
     }
